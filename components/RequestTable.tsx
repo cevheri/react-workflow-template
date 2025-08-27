@@ -109,6 +109,7 @@ export function RequestTable({ requests }: RequestTableProps) {
               </TableRow>
             ))}
           </TableBody>
+          
         </Table>
       </div>
 

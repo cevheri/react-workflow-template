@@ -34,6 +34,7 @@ export function WorkflowModal({ request, open, onOpenChange }: WorkflowModalProp
   const { changeStatus, addComment, addAttachment } = useRequestStore();
 
   const validTransitions = getValidTransitions(request.status);
+  const totalQuantity = request.items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleStatusChange = (newStatus: RequestStatus, action: string) => {
     const result = changeStatus(request.id, newStatus, 'Current User', comment || `${action} executed`);
@@ -68,6 +69,65 @@ export function WorkflowModal({ request, open, onOpenChange }: WorkflowModalProp
           <DialogTitle className="text-2xl">Workflow: {request.title}</DialogTitle>
         </DialogHeader>
         
+        {/* Request Summary Header */}
+        <div className="mb-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Requester</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <User className="h-4 w-4" />
+                    <span className="text-sm font-medium">{request.requester}</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Department</Label>
+                  <div className="text-sm mt-1">{request.department}</div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Created</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Calendar className="h-4 w-4" />
+                    <span className="text-sm">{format(request.createdAt, 'MMM dd, yyyy HH:mm')}</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Status</Label>
+                  <div className="mt-1">
+                    <Badge className={`${statusColors[request.status]} text-xs font-semibold`}>
+                      {request.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <Separator className="my-4" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Items</Label>
+                  <div className="text-sm mt-1">{request.items.length}</div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Total Quantity</Label>
+                  <div className="text-sm mt-1">{totalQuantity}</div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Comments</Label>
+                  <div className="text-sm mt-1">{request.notes.length}</div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Files</Label>
+                  <div className="text-sm mt-1">{request.attachments.length}</div>
+                </div>
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground">Request ID</Label>
+                  <div className="text-xs mt-1 font-mono break-all">{request.id}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column - Controls */}
           <div className="space-y-6">

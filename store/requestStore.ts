@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { PurchaseRequest, RequestStatus, HistoryLog, Attachment, getValidTransitions } from '@/lib/types';
+import { PurchaseRequest, RequestStatus, HistoryLog, Attachment, getValidTransitions, UnitType } from '@/lib/types';
 
 interface RequestStore {
   requests: PurchaseRequest[];
@@ -13,26 +13,47 @@ interface RequestStore {
   deleteRequest: (id: string) => void;
 }
 
+// Deterministic helpers to avoid SSR/CSR hydration mismatches for mock data
+const hashString = (input: string): number => {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 33) ^ input.charCodeAt(i);
+  }
+  return hash >>> 0;
+};
+
+const makeDeterministicId = (base: string): string => {
+  const h = hashString(base).toString(16).padStart(8, '0');
+  return `${h}${h}`; // 16 hex chars
+};
+
+const pickUnit = (index: number): UnitType => {
+  const units: UnitType[] = ['Piece', 'Kg', 'Liter', 'Package'];
+  return units[index % units.length];
+};
+
 const createMockRequest = (
+  index: number,
   title: string,
   requester: string,
   department: string,
   status: RequestStatus,
   itemsCount: number = 2
 ): PurchaseRequest => {
-  const id = uuidv4();
-  const createdAt = new Date(Date.now() - Math.random() * 10 * 24 * 60 * 60 * 1000);
-  
+  const id = makeDeterministicId(`${title}-${index}`);
+  // Fixed, deterministic dates starting from Jan 1, 2024
+  const createdAt = new Date(2024, 0, 1 + index, 9, 0, 0, 0);
+
   const items = Array.from({ length: itemsCount }, (_, i) => ({
-    id: uuidv4(),
+    id: makeDeterministicId(`${title}-item-${i}-${index}`),
     name: `Item ${i + 1} for ${title}`,
-    quantity: Math.floor(Math.random() * 10) + 1,
-    unit: ['Piece', 'Kg', 'Liter', 'Package'][Math.floor(Math.random() * 4)] as any
+    quantity: ((i + 1) * (index + 2)) % 10 + 1,
+    unit: pickUnit(i + index)
   }));
 
   const history: HistoryLog[] = [
     {
-      id: uuidv4(),
+      id: makeDeterministicId(`${title}-hist-0-${index}`),
       user: requester,
       action: 'Request Created',
       timestamp: createdAt,
@@ -42,7 +63,7 @@ const createMockRequest = (
 
   if (status !== 'Draft') {
     history.push({
-      id: uuidv4(),
+      id: makeDeterministicId(`${title}-hist-1-${index}`),
       user: requester,
       action: 'Status Changed',
       timestamp: new Date(createdAt.getTime() + 2 * 60 * 60 * 1000),
@@ -66,10 +87,10 @@ const createMockRequest = (
 
 export const useRequestStore = create<RequestStore>((set, get) => ({
   requests: [
-    createMockRequest('Office Supplies Q1 2024', 'John Doe', 'Administration', 'Approved'),
-    createMockRequest('Lab Equipment Upgrade', 'Dr. Smith', 'Research', 'Pending Approval'),
-    createMockRequest('Marketing Materials', 'Sarah Wilson', 'Marketing', 'Draft'),
-    createMockRequest('IT Infrastructure Update', 'Mike Johnson', 'IT', 'Rejected')
+    createMockRequest(0, 'Office Supplies Q1 2024', 'John Doe', 'Administration', 'Approved'),
+    createMockRequest(1, 'Lab Equipment Upgrade', 'Dr. Smith', 'Research', 'Pending Approval'),
+    createMockRequest(2, 'Marketing Materials', 'Sarah Wilson', 'Marketing', 'Draft'),
+    createMockRequest(3, 'IT Infrastructure Update', 'Mike Johnson', 'IT', 'Rejected')
   ],
 
   getRequestById: (id: string) => {
