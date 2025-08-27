@@ -2,11 +2,26 @@ export type RequestStatus = 'Draft' | 'Pending Approval' | 'Approved' | 'Rejecte
 
 export type UnitType = 'Piece' | 'Kg' | 'Liter' | 'Package';
 
+// Material catalog types for item selection
+export interface Material {
+  id: string;
+  code?: string;
+  name: string;
+  category: string;
+  subcategory: string;
+  unit: UnitType;
+}
+
 export interface RequestItem {
   id: string;
   name: string;
   quantity: number;
   unit: UnitType;
+  // Optional references to material catalog to support fast selection
+  materialId?: string;
+  category?: string;
+  subcategory?: string;
+  code?: string;
 }
 
 export interface HistoryLog {

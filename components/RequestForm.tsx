@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Trash2, Plus } from 'lucide-react';
 import { PurchaseRequest, RequestItem, UnitType } from '@/lib/types';
+import { ItemsTable } from '@/components/ItemsTable';
 import { useRequestStore } from '@/store/requestStore';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -143,75 +144,15 @@ export function RequestForm({ request, mode }: RequestFormProps) {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader>
           <CardTitle>Items</CardTitle>
-          {!isReadOnly && (
-            <Button type="button" onClick={addItem} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
-          )}
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {items.map((item, index) => (
-              <div key={item.id}>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                  <div className="md:col-span-2">
-                    <Label htmlFor={`item-name-${item.id}`}>Item Name</Label>
-                    <Input
-                      id={`item-name-${item.id}`}
-                      value={item.name}
-                      onChange={(e) => updateItem(item.id, 'name', e.target.value)}
-                      placeholder="Enter item name"
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`item-quantity-${item.id}`}>Quantity</Label>
-                    <Input
-                      id={`item-quantity-${item.id}`}
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`item-unit-${item.id}`}>Unit</Label>
-                    <div className="flex gap-2">
-                      <Select
-                        value={item.unit}
-                        onValueChange={(value) => updateItem(item.id, 'unit', value as UnitType)}
-                        disabled={isReadOnly}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {units.map((unit) => (
-                            <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {!isReadOnly && items.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => removeItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {index < items.length - 1 && <Separator className="mt-4" />}
-              </div>
-            ))}
-          </div>
+          <ItemsTable
+            items={items}
+            onChange={setItems}
+            readOnly={isReadOnly}
+          />
         </CardContent>
       </Card>
 
