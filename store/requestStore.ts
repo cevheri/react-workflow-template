@@ -85,13 +85,53 @@ const createMockRequest = (
   };
 };
 
-export const useRequestStore = create<RequestStore>((set, get) => ({
-  requests: [
+// Generate a larger deterministic dataset for initial state
+const generateMockRequests = (): PurchaseRequest[] => {
+  const base: PurchaseRequest[] = [
     createMockRequest(0, 'Office Supplies Q1 2024', 'John Doe', 'Administration', 'Approved'),
     createMockRequest(1, 'Lab Equipment Upgrade', 'Dr. Smith', 'Research', 'Pending Approval'),
     createMockRequest(2, 'Marketing Materials', 'Sarah Wilson', 'Marketing', 'Draft'),
     createMockRequest(3, 'IT Infrastructure Update', 'Mike Johnson', 'IT', 'Rejected')
-  ],
+  ];
+
+  const departments = [
+    'Administration',
+    'Research',
+    'Marketing',
+    'IT',
+    'Finance',
+    'Operations',
+    'HR',
+    'Procurement'
+  ];
+  const requesters = [
+    'John Doe',
+    'Jane Smith',
+    'Alice Johnson',
+    'Bob Williams',
+    'Carol Davis',
+    'Ethan Brown',
+    'Grace Miller',
+    'Henry Wilson'
+  ];
+  const statuses: RequestStatus[] = ['Draft', 'Pending Approval', 'Approved', 'Rejected'];
+
+  const extraCount = 40; // add 40 more requests
+  const generated = Array.from({ length: extraCount }, (_, i) => {
+    const idx = i + base.length;
+    const title = `Auto Generated Request ${i + 1}`;
+    const requester = requesters[i % requesters.length];
+    const department = departments[i % departments.length];
+    const status = statuses[i % statuses.length];
+    const itemsCount = (i % 4) + 1;
+    return createMockRequest(idx, title, requester, department, status, itemsCount);
+  });
+
+  return [...base, ...generated];
+};
+
+export const useRequestStore = create<RequestStore>((set, get) => ({
+  requests: generateMockRequests(),
 
   getRequestById: (id: string) => {
     return get().requests.find(request => request.id === id);
