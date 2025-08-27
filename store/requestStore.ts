@@ -5,7 +5,7 @@ import { PurchaseRequest, RequestStatus, HistoryLog, Attachment, getValidTransit
 interface RequestStore {
   requests: PurchaseRequest[];
   getRequestById: (id: string) => PurchaseRequest | undefined;
-  addRequest: (request: Omit<PurchaseRequest, 'id' | 'createdAt' | 'history' | 'attachments' | 'notes'>) => void;
+  addRequest: (request: Omit<PurchaseRequest, 'id' | 'createdAt' | 'history' | 'attachments' | 'notes' | 'status'>) => void;
   updateRequest: (id: string, updatedData: Partial<PurchaseRequest>) => void;
   addComment: (requestId: string, comment: string, user: string) => void;
   addAttachment: (requestId: string, attachment: Omit<Attachment, 'id' | 'uploadedAt'>) => void;
