@@ -54,7 +54,7 @@ export const useMaterialStore = create<MaterialStore>((set, get) => ({
   materials: generateMockMaterials(),
   categories: Object.keys(CATEGORIES),
   subcategoriesByCategory: Object.fromEntries(
-    Object.entries(CATEGORIES).map(([k, v]) => [k, v])
+    Object.entries(CATEGORIES).map(([k, v]) => [k, [...v]])
   ),
   filter: {},
   setFilter: (partial) => set((state) => ({ filter: { ...state.filter, ...partial } })),
