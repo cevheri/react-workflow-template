@@ -32,7 +32,7 @@ Quick index of endpoints with HTTP methods and short descriptions. See detailed 
 | Purchase Requests          | PUT    | `/api/v1/purchase-requests/{id}`                            | Update request (Draft only)          |
 | Purchase Requests          | PATCH  | `/api/v1/purchase-requests/{id}`                            | Partial update (Draft only)          |
 | Purchase Requests          | DELETE | `/api/v1/purchase-requests/{id}`                            | Delete (Draft/Rejected recommended)  |
-| Purchase Requests          | GET    | `/api/v1/purchase-requests/{id}/transitions`                | Current valid transitions            |
+| Purchase Requests          | GET    | `/api/v1/purchase-requests/{id}/transitions` !!!            | Current valid transitions            |
 | Workflow Engine            | GET    | `/api/v1/workflows/instances/{id}/retrieve`                 | Get workflow instance                |
 | Workflow Engine            | GET    | `/api/v1/workflows/instances/{id}/available_actions`        | List available actions               |
 | Workflow Engine            | POST   | `/api/v1/workflows/instances/{id}/transitions/{action}`     | Perform transition action            |
