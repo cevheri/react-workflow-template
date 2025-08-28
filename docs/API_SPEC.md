@@ -33,20 +33,12 @@ Quick index of endpoints with HTTP methods and short descriptions. See detailed 
 | Purchase Requests          | PATCH  | `/api/v1/purchase-requests/{id}`                            | Partial update (Draft only)          |
 | Purchase Requests          | DELETE | `/api/v1/purchase-requests/{id}`                            | Delete (Draft/Rejected recommended)  |
 | Purchase Requests          | GET    | `/api/v1/purchase-requests/{id}/transitions`                | Current valid transitions            |
-| Purchase Requests          | POST   | `/api/v1/purchase-requests/{id}/submit`                     | Draft → Pending Approval             |
-| Purchase Requests          | POST   | `/api/v1/purchase-requests/{id}/approve`                    | Pending Approval → Approved          |
-| Purchase Requests          | POST   | `/api/v1/purchase-requests/{id}/reject`                     | Pending Approval → Rejected          |
-| Purchase Requests          | POST   | `/api/v1/purchase-requests/{id}/withdraw`                   | Pending Approval → Draft             |
-| Purchase Requests          | POST   | `/api/v1/purchase-requests/{id}/revise`                     | Rejected → Draft                     |
-| Purchase Requests          | GET    | `/api/v1/purchase-requests/{id}/history`                    | Full activity timeline               |
-| Purchase Requests          | GET    | `/api/v1/purchase-requests/{id}/comments`                   | List comments                        |
-| Purchase Requests          | POST   | `/api/v1/purchase-requests/{id}/comments`                   | Add comment                          |
-| Purchase Requests          | GET    | `/api/v1/purchase-requests/{id}/attachments`                | List attachments                     |
-| Purchase Requests          | POST   | `/api/v1/purchase-requests/{id}/attachments`                | Upload attachment (multipart)        |
-| Purchase Requests          | DELETE | `/api/v1/purchase-requests/{id}/attachments/{attachmentId}` | Delete attachment                    |
-| Workflows                  | GET    | `/api/v1/workflows/purchase-requests/transitions`           | Static transition definitions        |
-| Workflows                  | GET    | `/api/v1/workflows/purchase-requests/statuses`              | Status list                          |
-| Workflows                  | GET    | `/api/v1/workflows/purchase-requests/{id}/transitions`      | Context-aware transitions (alias)    |
+| Workflow Engine            | GET    | `/api/v1/workflows/instances/{id}/retrieve`                 | Get workflow instance                |
+| Workflow Engine            | GET    | `/api/v1/workflows/instances/{id}/available_actions`        | List available actions               |
+| Workflow Engine            | POST   | `/api/v1/workflows/instances/{id}/transitions/{action}`     | Perform transition action            |
+| Workflow Engine            | POST   | `/api/v1/workflows/instances/{id}/comments/add`             | Add comment                          |
+| Workflow Engine            | POST   | `/api/v1/workflows/instances/{id}/attachments/add`          | Add attachment (multipart)           |
+| Workflow Engine            | GET    | `/api/v1/workflows/instances/{id}/histories`                | Instance history                     |
 | Products                   | GET    | `/api/v1/products`                                          | List materials (filters, pagination) |
 | Products                   | GET    | `/api/v1/products/{id}`                                     | Get material by id                   |
 | Products                   | GET    | `/api/v1/products/categories`                               | List categories                      |
@@ -122,6 +114,32 @@ Material (Product)
 }
 ```
 
+Workflow Engine
+```json
+{
+  "WorkflowInstance": {
+    "id": "string",
+    "definition": "string",
+    "targetType": "string",
+    "targetId": "string",
+    "currentState": "string",
+    "context": { "any": "object" }
+  },
+  "WorkflowAction": { "action": "string", "label": "string" },
+  "WorkflowHistory": {
+    "id": "string",
+    "from": "string",
+    "to": "string",
+    "action": "string",
+    "note": "string|optional",
+    "createdAt": "2024-01-01T10:00:00Z",
+    "user": "string"
+  },
+  "WorkflowComment": { "id": "string", "comment": "string", "createdAt": "2024-01-01T10:00:00Z", "user": "string" },
+  "WorkflowAttachment": { "id": "string", "fileName": "string", "fileUrl": "string", "uploadedAt": "2024-01-01T11:00:00Z" }
+}
+```
+
 WorkflowTransition
 ```json
 { "from": "Draft|Pending Approval|Approved|Rejected", "to": "Draft|Pending Approval|Approved|Rejected", "action": "string" }
@@ -166,74 +184,78 @@ Resource: `/purchase-requests`
   - Description: Delete a request. Recommended to allow when `status in [Draft, Rejected]`.
   - 204
 
-Workflow actions for a request
+Workflow actions for a request (Deprecated)
 
-- GET `/purchase-requests/{id}/transitions`
-  - 200: `{ "data": [ WorkflowTransition ] }`
-
-- POST `/purchase-requests/{id}/submit`
-  - From: Draft → Pending Approval.
-  - Body: `{ "comment": "string|optional" }`
-  - 200: `PurchaseRequest`
-
-- POST `/purchase-requests/{id}/approve`
-  - From: Pending Approval → Approved.
-  - Body: `{ "comment": "string|optional" }`
-  - 200: `PurchaseRequest`
-
-- POST `/purchase-requests/{id}/reject`
-  - From: Pending Approval → Rejected.
-  - Body: `{ "comment": "string|optional" }`
-  - 200: `PurchaseRequest`
-
-- POST `/purchase-requests/{id}/withdraw`
-  - From: Pending Approval → Draft.
-  - Body: `{ "comment": "string|optional" }`
-  - 200: `PurchaseRequest`
-
-- POST `/purchase-requests/{id}/revise`
-  - From: Rejected → Draft.
-  - Body: `{ "comment": "string|optional" }`
-  - 200: `PurchaseRequest`
-
-History, comments, attachments
-
-- GET `/purchase-requests/{id}/history`
-  - 200: `{ "data": [HistoryLog] }`
-
-- GET `/purchase-requests/{id}/comments`
-  - 200: `{ "data": [HistoryLog] }` (where `action = "Comment Added"`)
-
-- POST `/purchase-requests/{id}/comments`
-  - Body: `{ "comment": "string" }`
-  - 201: `HistoryLog`
-
-- GET `/purchase-requests/{id}/attachments`
-  - 200: `{ "data": [Attachment] }`
-
-- POST `/purchase-requests/{id}/attachments`
-  - Content-Type: `multipart/form-data`
-  - Fields: `file` (binary), `fileName` (string|optional)
-  - 201: `Attachment`
-
-- DELETE `/purchase-requests/{id}/attachments/{attachmentId}`
-  - 204
+This section is superseded by the generic Workflow Engine endpoints under `/api/v1/workflows/instances/*`.
 
 ---
 
 ### Workflows
 Resource: `/workflows`
 
-- GET `/workflows/purchase-requests/transitions`
-  - Description: Static transition definitions for PurchaseRequest.
-  - 200: `{ "data": [ WorkflowTransition ] }`
+Generic Workflow Engine
 
-- GET `/workflows/purchase-requests/statuses`
-  - 200: `{ "data": [ "Draft", "Pending Approval", "Approved", "Rejected" ] }`
+The workflow engine provides generic endpoints to retrieve instance details, list available actions,
+perform transitions, and manage comments/attachments/histories regardless of the target domain entity.
 
-Optionally, a context-aware endpoint:
+- GET `/workflows/instances/{id}/retrieve`
+  - Description: Retrieve a workflow instance by id.
+  - 200:
+    ```json
+    {
+      "data": {
+        "id": "1001",
+        "definition": "PURCHASE_REQUEST_FLOW",
+        "targetType": "PURCHASE_REQUEST",
+        "targetId": "PR-001",
+        "currentState": "SUBMITTED",
+        "context": {
+          "purchase_request_id": 1,
+          "purchase_request_number": "PR-001",
+          "purchase_request_date": "2021-01-01",
+          "purchase_request_amount": 1000,
+          "purchase_request_status": "SUBMITTED"
+        }
+      }
+    }
+    ```
 
-- GET `/workflows/purchase-requests/{id}/transitions` → same as `/purchase-requests/{id}/transitions`.
+- GET `/workflows/instances/{id}/available_actions`
+  - Description: List available actions for the current state and caller permissions.
+  - 200:
+    ```json
+    { "data": [ { "action": "submit", "label": "Submit" }, { "action": "approve", "label": "Approve" }, { "action": "reject", "label": "Reject" } ] }
+    ```
+
+- POST `/workflows/instances/{id}/transitions/{action}`
+  - Description: Execute a transition action on the instance (e.g., `approve`, `reject`).
+  - Body: `{ "comment": "string|optional", "metadata": { "key": "value" } }`
+  - 200: same shape as `retrieve` with updated `currentState`.
+
+- POST `/workflows/instances/{id}/comments/add`
+  - Description: Add a comment to the instance.
+  - Body: `{ "comment": "string" }`
+  - 201:
+    ```json
+    { "data": { "id": "c-1", "comment": "Submitted by John", "createdAt": "2021-01-01T10:00:00Z", "user": "john" } }
+    ```
+
+- POST `/workflows/instances/{id}/attachments/add`
+  - Content-Type: `multipart/form-data`
+  - Fields: `file` (binary), `fileName` (string|optional)
+  - 201: `{ "data": { "id": "a-1", "fileName": "quote.pdf", "fileUrl": "https://..." } }`
+
+- GET `/workflows/instances/{id}/histories`
+  - Description: List audit trail entries.
+  - 200:
+    ```json
+    {
+      "data": [
+        { "id": "h-1", "from": "DRAFT", "to": "SUBMITTED", "action": "submit", "note": "Submitted by John Doe", "createdAt": "2021-01-01T10:00:00Z", "user": "john" },
+        { "id": "h-2", "from": "SUBMITTED", "to": "APPROVED", "action": "approve", "note": "Approved by Jane", "createdAt": "2021-01-01T12:00:00Z", "user": "jane" }
+      ]
+    }
+    ```
 
 ---
 

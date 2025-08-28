@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Plus, Search } from 'lucide-react';
 import { MaterialSelector } from '@/components/MaterialSelector';
+import { InlineMaterialSearch } from '@/components/InlineMaterialSearch';
 
 interface ItemsTableProps {
   items: RequestItem[];
@@ -71,6 +72,28 @@ export function ItemsTable({ items, onChange, readOnly }: ItemsTableProps) {
         )}
       </div>
 
+      {!readOnly && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">Quick add by name/code</div>
+          <InlineMaterialSearch
+            placeholder="Quick search material..."
+            onPick={(m) => {
+              const next = {
+                id: uuidv4(),
+                name: m.name,
+                quantity: 1,
+                unit: m.unit,
+                materialId: m.id,
+                category: m.category,
+                subcategory: m.subcategory,
+                code: m.code
+              } as RequestItem;
+              onChange([...items, next]);
+            }}
+          />
+        </div>
+      )}
+
       <div className="border rounded-md overflow-hidden">
         <div className="max-h-96 overflow-auto">
           <table className="w-full text-sm">
@@ -104,12 +127,34 @@ export function ItemsTable({ items, onChange, readOnly }: ItemsTableProps) {
                     </div>
                   </td>
                   <td className="p-2">
-                    <Input
-                      value={row.name}
-                      onChange={(e) => updateRow(row.id, { name: e.target.value })}
-                      placeholder="Material name"
-                      disabled={readOnly}
-                    />
+                    {readOnly ? (
+                      <Input value={row.name} disabled placeholder="Material name" />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={row.name}
+                          onChange={(e) => updateRow(row.id, { name: e.target.value })}
+                          placeholder="Material name"
+                        />
+                        <InlineMaterialSearch
+                          align="end"
+                          onPick={(m) =>
+                            updateRow(row.id, {
+                              materialId: m.id,
+                              name: m.name,
+                              unit: m.unit,
+                              category: m.category,
+                              subcategory: m.subcategory,
+                              code: m.code
+                            })
+                          }
+                        >
+                          <Button type="button" size="icon" variant="outline">
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        </InlineMaterialSearch>
+                      </div>
+                    )}
                   </td>
                   <td className="p-2">
                     <Input value={row.category || ''} disabled placeholder="Category" />
