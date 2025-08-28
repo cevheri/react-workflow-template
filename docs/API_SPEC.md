@@ -361,3 +361,80 @@ Admin (optional, not required by current UI)
 This spec omits authentication/authorization. In production, protect mutating operations and workflow actions. Consider role-based access (Requester, Approver, Admin).
 
 
+
+---
+
+### Workflow Engine – Business Guide (Finite-State Machine)
+
+This section explains the generic workflow engine from a business perspective, using the finite-state machine (FSM) model. It describes concepts, a step-by-step lifecycle, real-world examples, and practical guidance so anyone reading this document can understand how to define, run, and observe workflows across domains (purchase requests, product specs, projects, etc.).
+
+#### Core Concepts (Business Mapping)
+- **WorkflowDefinition**: The template of a process (e.g., PURCHASE_REQUEST_FLOW). It declares the initial state and the set of valid states/transitions.
+- **WorkflowState**: A named stage in the process (e.g., DRAFT, SUBMITTED, APPROVED, REJECTED). A workflow instance is always in exactly one state at a time.
+- **WorkflowTransition**: A permitted move from one state to another (e.g., Submit: DRAFT → SUBMITTED, Approve: SUBMITTED → APPROVED). Transitions represent business actions.
+- **WorkflowInstance**: A running case following a definition, linked to a business entity (e.g., targetType=PURCHASE_REQUEST, targetTypeId=1). Holds current state and context.
+- **WorkflowHistory**: The audit trail capturing performed actions, from/to states, who did it, when, and any notes.
+- **WorkflowNotification**: Rules for sending notifications when states are entered/exited or transitions complete (email/web/etc.).
+
+#### End-to-End Lifecycle (Step-by-Step)
+1) Define the flow template
+   - Create a `WorkflowDefinition` (e.g., PURCHASE_REQUEST_FLOW) and pick an `initialStateId`.
+2) Configure states
+   - Add `WorkflowState` records (e.g., DRAFT, SUBMITTED, APPROVED, REJECTED) under the definition.
+3) Configure transitions (business actions)
+   - Add `WorkflowTransition` entries (e.g., Submit DRAFT→SUBMITTED, Approve SUBMITTED→APPROVED, Reject SUBMITTED→REJECTED). Attach RBAC/business rules in application logic.
+4) Create a workflow instance
+   - When a business object is created (e.g., PR-001), create a `WorkflowInstance` with `workflowDefinitionId`, `currentStateId=initialStateId`, `targetType`, `targetTypeId`, and rich `context`.
+5) Retrieve instance details
+   - `GET /api/v1/workflows/instances/{id}/retrieve` returns the current snapshot (definition/state/target/context, timestamps).
+6) Discover available actions
+   - `GET /api/v1/workflows/instances/{id}/available_actions` lists transitions allowed for the current state and caller’s permissions.
+7) Perform a transition
+   - `POST /api/v1/workflows/instances/{id}/transitions/{action}` with `{ "transitionId": <id>, "comment": "..." }`. Server validates rules, updates `currentStateId`, and triggers side-effects.
+8) Record history
+   - Each transition is appended as a `WorkflowHistory` row (fromStateId, toStateId, actionName, notes, createdBy, createdAt).
+9) Collaborate with comments
+   - `POST /api/v1/workflows/instances/{id}/comments/add` to add notes, decisions, and clarifications.
+10) Attach supporting documents
+   - `POST /api/v1/workflows/instances/{id}/attachments/add` (multipart) for quotes, approvals, checklists, etc.
+11) Notify stakeholders
+   - Notification rules (e.g., on Approve) send emails/web messages to recipients (managers, requesters, participants).
+12) Report and audit
+   - `GET /api/v1/workflows/instances/{id}/histories` provides the full audit trail for compliance and analytics.
+
+#### Real-World Examples
+1) Purchase Request (PURCHASE_REQUEST_FLOW)
+   - States: DRAFT → SUBMITTED → APPROVED/REJECTED
+   - Transitions: Submit (DRAFT→SUBMITTED), Approve (SUBMITTED→APPROVED), Reject (SUBMITTED→REJECTED)
+   - Sequence:
+     1. User creates PR → WorkflowInstance created at DRAFT
+     2. User submits → Available action: Submit → Transition → state becomes SUBMITTED
+     3. Approver reviews → Actions: Approve or Reject
+     4. Decision taken → History recorded, notifications sent
+   - Context may include request metadata: number, date, amount, requester, department.
+
+2) Product Specification Review (PRODUCT_SPECIFICATION_FLOW)
+   - States: DRAFT → IN_REVIEW → APPROVED/CHANGES_REQUESTED
+   - Transitions: SendForReview (DRAFT→IN_REVIEW), Approve (IN_REVIEW→APPROVED), RequestChanges (IN_REVIEW→CHANGES_REQUESTED)
+   - Sequence mirrors purchase request, but participants and rules differ (e.g., engineering and QA approval).
+
+3) Project Stage Gate (PROJECT_MANAGEMENT_FLOW)
+   - States: INITIATION → PLANNING → EXECUTION → CLOSURE
+   - Transitions: StartPlanning, StartExecution, CloseProject
+   - Each gate can require documents and approvals; histories and attachments serve audits.
+
+#### Roles, Permissions, and Business Rules
+- Available actions depend on both the current state and the caller’s authority/role.
+- Business rules can enforce prerequisites (e.g., budget > 0, attachments present, validations passed). If violated, transitions return 409 or 403.
+- Notifications keep stakeholders in the loop at critical moments (submission, approval, rejection, completion).
+
+#### Design Recommendations
+- Use clear, action-oriented transition names (Approve, Reject, Submit, RequestChanges).
+- Keep states mutually exclusive and collectively exhaustive for the process.
+- Store rich `context` for downstream rules, reporting, and notifications.
+- Prefer `transitionId` for execution; accept slugs only if needed.
+- Ensure idempotency where appropriate (e.g., guard against double-click Approve).
+- Log everything in `WorkflowHistory` for compliance and easy troubleshooting.
+
+#### Why FSM?
+Finite-State Machines make complex processes predictable and observable: at any time the instance is in exactly one state; only declared transitions are allowed; histories and notifications offer traceability and engagement. This abstraction scales across domains while keeping the engine generic and the business rules modular.
