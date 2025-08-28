@@ -117,32 +117,56 @@ Material (Product)
 Workflow Engine
 ```json
 {
+  "WorkflowDefinition": {
+    "id": "number",
+    "name": "string",
+    "description": "string|optional",
+    "initialStateId": "number|optional"
+  },
+  "WorkflowState": {
+    "id": "number",
+    "workflowDefinitionId": "number",
+    "name": "string",
+    "description": "string|optional"
+  },
+  "WorkflowTransition": {
+    "id": "number",
+    "name": "string",
+    "description": "string|optional",
+    "fromStateId": "number",
+    "toStateId": "number"
+  },
   "WorkflowInstance": {
-    "id": "string",
-    "definition": "string",
-    "targetType": "string",
-    "targetId": "string",
-    "currentState": "string",
-    "context": { "any": "object" }
-  },
-  "WorkflowAction": { "action": "string", "label": "string" },
-  "WorkflowHistory": {
-    "id": "string",
-    "from": "string",
-    "to": "string",
-    "action": "string",
-    "note": "string|optional",
+    "id": "number",
+    "workflowDefinitionId": "number",
+    "currentStateId": "number",
+    "targetType": "string|optional",
+    "targetTypeId": "number|optional",
+    "context": { "any": "object" },
     "createdAt": "2024-01-01T10:00:00Z",
-    "user": "string"
+    "updatedAt": "2024-01-01T11:00:00Z",
+    "workflowDefinition": "WorkflowDefinition|optional",
+    "currentState": "WorkflowState|optional"
   },
-  "WorkflowComment": { "id": "string", "comment": "string", "createdAt": "2024-01-01T10:00:00Z", "user": "string" },
-  "WorkflowAttachment": { "id": "string", "fileName": "string", "fileUrl": "string", "uploadedAt": "2024-01-01T11:00:00Z" }
+  "WorkflowAction": { "id": "number", "name": "string", "fromStateId": "number", "toStateId": "number", "description": "string|optional" },
+  "WorkflowHistory": {
+    "id": "number",
+    "workflowInstanceId": "number",
+    "actionName": "string",
+    "fromStateId": "number",
+    "toStateId": "number",
+    "notes": "string|optional",
+    "createdAt": "2024-01-01T10:00:00Z",
+    "createdBy": "string"
+  },
+  "WorkflowComment": { "id": "number", "workflowInstanceId": "number", "comment": "string", "createdAt": "2024-01-01T10:00:00Z", "createdBy": "string" },
+  "WorkflowAttachment": { "id": "number", "workflowInstanceId": "number", "fileName": "string", "fileUrl": "string", "uploadedAt": "2024-01-01T11:00:00Z", "uploadedBy": "string" }
 }
 ```
 
-WorkflowTransition
+WorkflowTransition (deprecated inline format)
 ```json
-{ "from": "Draft|Pending Approval|Approved|Rejected", "to": "Draft|Pending Approval|Approved|Rejected", "action": "string" }
+{ "id": 10, "name": "Approve", "fromStateId": 2, "toStateId": 3 }
 ```
 
 ---
@@ -204,18 +228,22 @@ perform transitions, and manage comments/attachments/histories regardless of the
     ```json
     {
       "data": {
-        "id": "1001",
-        "definition": "PURCHASE_REQUEST_FLOW",
+        "id": 1001,
+        "workflowDefinitionId": 10,
+        "currentStateId": 3,
         "targetType": "PURCHASE_REQUEST",
-        "targetId": "PR-001",
-        "currentState": "SUBMITTED",
+        "targetTypeId": 1,
         "context": {
           "purchase_request_id": 1,
           "purchase_request_number": "PR-001",
           "purchase_request_date": "2021-01-01",
           "purchase_request_amount": 1000,
           "purchase_request_status": "SUBMITTED"
-        }
+        },
+        "createdAt": "2021-01-01T09:00:00Z",
+        "updatedAt": "2021-01-01T10:00:00Z",
+        "workflowDefinition": { "id": 10, "name": "PURCHASE_REQUEST_FLOW", "initialStateId": 1 },
+        "currentState": { "id": 3, "name": "SUBMITTED" }
       }
     }
     ```
@@ -224,26 +252,41 @@ perform transitions, and manage comments/attachments/histories regardless of the
   - Description: List available actions for the current state and caller permissions.
   - 200:
     ```json
-    { "data": [ { "action": "submit", "label": "Submit" }, { "action": "approve", "label": "Approve" }, { "action": "reject", "label": "Reject" } ] }
+    {
+      "data": [
+        { "id": 20, "name": "Submit", "fromStateId": 1, "toStateId": 3 },
+        { "id": 21, "name": "Approve", "fromStateId": 3, "toStateId": 4 },
+        { "id": 22, "name": "Reject", "fromStateId": 3, "toStateId": 5 }
+      ]
+    }
     ```
 
 - POST `/workflows/instances/{id}/transitions/{action}`
   - Description: Execute a transition action on the instance (e.g., `approve`, `reject`).
-  - Body: `{ "comment": "string|optional", "metadata": { "key": "value" } }`
-  - 200: same shape as `retrieve` with updated `currentState`.
+  - Path param `{action}` can be either transition id or action slug, server SHOULD accept both. Recommended: use id.
+  - Body:
+    ```json
+    { "transitionId": 21, "comment": "Approved by manager", "metadata": { "key": "value" } }
+    ```
+  - 200: same shape as `retrieve` with updated `currentStateId` and embedded `currentState`.
+  - 409: invalid transition for current state
+  - 403: caller not authorized for transition
 
 - POST `/workflows/instances/{id}/comments/add`
   - Description: Add a comment to the instance.
   - Body: `{ "comment": "string" }`
   - 201:
     ```json
-    { "data": { "id": "c-1", "comment": "Submitted by John", "createdAt": "2021-01-01T10:00:00Z", "user": "john" } }
+    { "data": { "id": 301, "workflowInstanceId": 1001, "comment": "Submitted by John", "createdAt": "2021-01-01T10:00:00Z", "createdBy": "john" } }
     ```
 
 - POST `/workflows/instances/{id}/attachments/add`
   - Content-Type: `multipart/form-data`
   - Fields: `file` (binary), `fileName` (string|optional)
-  - 201: `{ "data": { "id": "a-1", "fileName": "quote.pdf", "fileUrl": "https://..." } }`
+  - 201:
+    ```json
+    { "data": { "id": 401, "workflowInstanceId": 1001, "fileName": "quote.pdf", "fileUrl": "https://...", "uploadedAt": "2021-01-01T10:10:00Z", "uploadedBy": "john" } }
+    ```
 
 - GET `/workflows/instances/{id}/histories`
   - Description: List audit trail entries.
@@ -251,8 +294,8 @@ perform transitions, and manage comments/attachments/histories regardless of the
     ```json
     {
       "data": [
-        { "id": "h-1", "from": "DRAFT", "to": "SUBMITTED", "action": "submit", "note": "Submitted by John Doe", "createdAt": "2021-01-01T10:00:00Z", "user": "john" },
-        { "id": "h-2", "from": "SUBMITTED", "to": "APPROVED", "action": "approve", "note": "Approved by Jane", "createdAt": "2021-01-01T12:00:00Z", "user": "jane" }
+        { "id": 201, "workflowInstanceId": 1001, "actionName": "Submit", "fromStateId": 1, "toStateId": 3, "notes": "Submitted by John Doe", "createdAt": "2021-01-01T10:00:00Z", "createdBy": "john" },
+        { "id": 202, "workflowInstanceId": 1001, "actionName": "Approve", "fromStateId": 3, "toStateId": 4, "notes": "Approved by Jane", "createdAt": "2021-01-01T12:00:00Z", "createdBy": "jane" }
       ]
     }
     ```
